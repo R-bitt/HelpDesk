@@ -23,7 +23,7 @@
                     <TextBlock Text="Система обработки заявок" Foreground="#C9DCF0" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock x:Name="CurrentUserText" Text="Пользователь: admin"
+                    <TextBlock x:Name="CurrentUserTextBlock" Text="Пользователь: admin"
                                Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="0,0,16,0"/>
                     <Button Content="Выйти" Style="{StaticResource HeaderButton}" Click="LogoutButton_Click"/>
                 </StackPanel>
@@ -72,13 +72,7 @@
                            Foreground="{StaticResource MutedBrush}" Margin="14,0,8,0"/>
 
                 <ComboBox x:Name="StatusComboBox" Grid.Column="3" Style="{StaticResource InputCombo}"
-                          SelectedIndex="0" SelectionChanged="StatusComboBox_SelectionChanged">
-                    <ComboBoxItem Content="Все"/>
-                    <ComboBoxItem Content="Новая"/>
-                    <ComboBoxItem Content="В работе"/>
-                    <ComboBoxItem Content="Выполнена"/>
-                    <ComboBoxItem Content="Отклонена"/>
-                </ComboBox>
+                          SelectionChanged="StatusComboBox_SelectionChanged"/>
 
                 <Button Grid.Column="4" Content="Найти" Style="{StaticResource PrimaryButton}"
                         Margin="12,0,0,0" Click="SearchButton_Click"/>

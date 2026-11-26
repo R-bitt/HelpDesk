@@ -27,14 +27,7 @@
                    Foreground="{StaticResource MutedBrush}" Margin="0,4,0,20"/>
 
         <TextBlock Grid.Row="2" Text="Категория" Style="{StaticResource FieldLabel}"/>
-        <ComboBox x:Name="CategoryComboBox" Grid.Row="3" Style="{StaticResource InputCombo}" Height="36">
-            <ComboBoxItem Content="Оборудование"/>
-            <ComboBoxItem Content="Программное обеспечение"/>
-            <ComboBoxItem Content="Сеть"/>
-            <ComboBoxItem Content="Учётная запись"/>
-            <ComboBoxItem Content="Периферия"/>
-            <ComboBoxItem Content="Другое"/>
-        </ComboBox>
+        <ComboBox x:Name="CategoryComboBox" Grid.Row="3" Style="{StaticResource InputCombo}" Height="36"/>
 
         <StackPanel Grid.Row="4" Margin="0,14,0,0">
             <TextBlock Text="Описание проблемы" Style="{StaticResource FieldLabel}"/>
@@ -51,20 +44,11 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Text="Приоритет" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="PriorityComboBox" Style="{StaticResource InputCombo}" Height="36">
-                    <ComboBoxItem Content="Низкий"/>
-                    <ComboBoxItem Content="Средний"/>
-                    <ComboBoxItem Content="Высокий"/>
-                </ComboBox>
+                <ComboBox x:Name="PriorityComboBox" Style="{StaticResource InputCombo}" Height="36"/>
             </StackPanel>
             <StackPanel Grid.Column="2">
                 <TextBlock Text="Статус" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="StatusComboBox" Style="{StaticResource InputCombo}" Height="36">
-                    <ComboBoxItem Content="Новая"/>
-                    <ComboBoxItem Content="В работе"/>
-                    <ComboBoxItem Content="Выполнена"/>
-                    <ComboBoxItem Content="Отклонена"/>
-                </ComboBox>
+                <ComboBox x:Name="StatusComboBox" Style="{StaticResource InputCombo}" Height="36"/>
             </StackPanel>
         </Grid>
 

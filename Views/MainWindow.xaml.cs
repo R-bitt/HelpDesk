@@ -1,62 +1,176 @@
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using HelpDesk.Helpers;
+using HelpDesk.Data;
 using HelpDesk.Models;
 
 namespace HelpDesk.Views
 {
     public partial class MainWindow : Window
     {
-        private readonly List<Ticket> _tickets;
-        private readonly string _demoMode;
+        private List<Ticket> _tickets = new List<Ticket>();
 
-        public MainWindow() : this(string.Empty)
-        {
-        }
-
-        public MainWindow(string demoMode)
+        public MainWindow()
         {
             InitializeComponent();
-            _demoMode = demoMode;
-            _tickets = SampleData.CreateTickets();
-            CurrentUserText.Text = "Пользователь: admin";
 
-            if (demoMode == "search" || demoMode == "combined")
+            CurrentUserTextBlock.Text = "Пользователь: admin";
+
+            LoadStatuses();
+            SafeLoadTickets();
+        }
+
+        /// <summary>
+        /// Загружает заявки из MS SQL Server через SELECT с JOIN.
+        /// </summary>
+        private void LoadTickets()
+        {
+            var tickets = new List<Ticket>();
+
+            const string sql = @"
+                SELECT
+                    t.Id,
+                    t.UserId,
+                    t.CategoryId,
+                    c.Name AS Category,
+                    t.Description,
+                    t.PriorityId,
+                    p.Name AS Priority,
+                    t.StatusId,
+                    s.Name AS Status,
+                    t.AssignedUserId,
+                    t.CreatedAt,
+                    t.UpdatedAt
+                FROM dbo.Tickets AS t
+                INNER JOIN dbo.Categories AS c ON t.CategoryId = c.Id
+                INNER JOIN dbo.Priorities AS p ON t.PriorityId = p.Id
+                INNER JOIN dbo.Statuses   AS s ON t.StatusId   = s.Id
+                ORDER BY t.Id DESC;";
+
+            using (SqlConnection connection = Database.GetConnection())
+            using (SqlCommand command = new SqlCommand(sql, connection))
             {
-                SearchTextBox.Text = "принтер";
+                connection.Open();
+
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var ticket = new Ticket
+                        {
+                            Id = Convert.ToInt32(reader["Id"]),
+                            UserId = Convert.ToInt32(reader["UserId"]),
+                            CategoryId = Convert.ToInt32(reader["CategoryId"]),
+                            Category = reader["Category"].ToString() ?? string.Empty,
+                            Description = reader["Description"].ToString() ?? string.Empty,
+                            PriorityId = Convert.ToInt32(reader["PriorityId"]),
+                            Priority = reader["Priority"].ToString() ?? string.Empty,
+                            StatusId = Convert.ToInt32(reader["StatusId"]),
+                            Status = reader["Status"].ToString() ?? string.Empty,
+                            CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+                        };
+
+                        if (reader["AssignedUserId"] != DBNull.Value)
+                        {
+                            ticket.AssignedUserId = Convert.ToInt32(reader["AssignedUserId"]);
+                        }
+
+                        if (reader["UpdatedAt"] != DBNull.Value)
+                        {
+                            ticket.UpdatedAt = Convert.ToDateTime(reader["UpdatedAt"]);
+                        }
+
+                        tickets.Add(ticket);
+                    }
+                }
             }
 
-            if (demoMode == "filter" || demoMode == "combined")
-            {
-                StatusComboBox.SelectedIndex = 2;
-            }
-
+            _tickets = tickets;
             ApplyFilter();
+        }
+
+        /// <summary>
+        /// Безопасная загрузка: ошибка SQL Server не завершает приложение аварийно.
+        /// </summary>
+        private void SafeLoadTickets()
+        {
+            try
+            {
+                LoadTickets();
+            }
+            catch (SqlException ex)
+            {
+                _tickets = new List<Ticket>();
+                TicketsGrid.ItemsSource = null;
+                CountText.Text = "Показано заявок: 0 из 0";
+                StatusText.Text = "Нет подключения к базе данных";
+
+                MessageBox.Show(
+                    "Не удалось загрузить заявки из базы данных.\n\n" +
+                    "Проверьте SQL Server, имя базы и строку подключения.\n\n" +
+                    ex.Message,
+                    "Ошибка базы данных",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает статусы из таблицы Statuses. Пункт «Все» — интерфейсный.
+        /// </summary>
+        private void LoadStatuses()
+        {
+            StatusComboBox.Items.Clear();
+            StatusComboBox.Items.Add("Все");
+
+            const string sql = "SELECT Name FROM dbo.Statuses ORDER BY Id";
+
+            try
+            {
+                using (SqlConnection connection = Database.GetConnection())
+                using (SqlCommand command = new SqlCommand(sql, connection))
+                {
+                    connection.Open();
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            StatusComboBox.Items.Add(reader["Name"].ToString());
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                MessageBox.Show(
+                    "Не удалось загрузить статусы из базы данных.\n\n" + ex.Message,
+                    "Ошибка базы данных",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+
+            StatusComboBox.SelectedIndex = 0;
         }
 
         private void ApplyFilter()
         {
-            if (TicketsGrid == null)
-            {
-                return;
-            }
-
             IEnumerable<Ticket> result = _tickets;
 
-            string text = SearchTextBox.Text.Trim().ToLower();
+            string text = SearchTextBox.Text.Trim().ToLowerInvariant();
             if (text.Length > 0)
             {
                 result = result.Where(t =>
-                    t.Description.ToLower().Contains(text) ||
-                    t.Category.ToLower().Contains(text) ||
-                    t.Status.ToLower().Contains(text));
+                    t.Description.ToLowerInvariant().Contains(text) ||
+                    t.Category.ToLowerInvariant().Contains(text) ||
+                    t.Status.ToLowerInvariant().Contains(text));
             }
 
-            string status = (StatusComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Все";
+            string status = StatusComboBox.SelectedItem as string ?? "Все";
             if (status != "Все")
             {
                 result = result.Where(t => t.Status == status);
@@ -65,7 +179,7 @@ namespace HelpDesk.Views
             var list = result.ToList();
             TicketsGrid.ItemsSource = list;
             CountText.Text = $"Показано заявок: {list.Count} из {_tickets.Count}";
-            StatusText.Text = "Данные загружены из временного хранилища";
+            StatusText.Text = "Данные загружены из базы данных";
         }
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)
@@ -98,13 +212,14 @@ namespace HelpDesk.Views
             var window = new TicketCreateWindow { Owner = this };
             if (window.ShowDialog() == true && window.CreatedTicket != null)
             {
-                window.CreatedTicket.Id = _tickets.Count == 0 ? 1 : _tickets.Max(t => t.Id) + 1;
-                window.CreatedTicket.Number = $"HD-2026-{100 + window.CreatedTicket.Id:000000}";
-                window.CreatedTicket.Author = "admin";
-                window.CreatedTicket.CreatedAt = DateTime.Now;
-                _tickets.Add(window.CreatedTicket);
+                var ticket = window.CreatedTicket;
+                ticket.Id = _tickets.Count == 0 ? 1 : _tickets.Max(t => t.Id) + 1;
+                ticket.UserId = 3; // до ПР №11: временно считаем автором user1
+                ticket.CreatedAt = DateTime.Now;
+
+                _tickets.Add(ticket);
                 ApplyFilter();
-                StatusText.Text = $"Создана заявка {window.CreatedTicket.Number}";
+                StatusText.Text = $"Добавлена заявка №{ticket.Id} (без сохранения в БД)";
             }
         }
 
@@ -131,7 +246,7 @@ namespace HelpDesk.Views
             if (window.ShowDialog() == true)
             {
                 ApplyFilter();
-                StatusText.Text = $"Изменена заявка {ticket.Number}";
+                StatusText.Text = $"Изменена заявка №{ticket.Id} (без сохранения в БД)";
             }
         }
 
@@ -144,14 +259,14 @@ namespace HelpDesk.Views
                 return;
             }
 
-            var result = MessageBox.Show($"Удалить заявку {ticket.Number}?", "Подтверждение удаления",
+            var result = MessageBox.Show($"Удалить заявку №{ticket.Id}?", "Подтверждение удаления",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
             {
                 _tickets.Remove(ticket);
                 ApplyFilter();
-                StatusText.Text = $"Удалена заявка {ticket.Number}";
+                StatusText.Text = $"Удалена заявка №{ticket.Id} (без сохранения в БД)";
             }
         }
 

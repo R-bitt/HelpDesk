@@ -1,18 +1,19 @@
+using System.Data.SqlClient;
+
 namespace HelpDesk.Data
 {
     /// <summary>
-    /// Класс доступа к базе данных MS SQL Server.
-    /// На текущем этапе хранит строку подключения;
-    /// запросы ADO.NET будут добавлены в следующих практических работах.
+    /// Единая точка подключения к базе данных HelpDesk.
+    /// Строка подключения хранится в одном месте, чтобы её было удобно изменить.
     /// </summary>
-    public class Database
+    public static class Database
     {
-        private const string ConnectionString =
-            @"Server=localhost;Database=HelpDesk;Trusted_Connection=True;TrustServerCertificate=True;";
+        public static string ConnectionString =
+            @"Server=localhost;Database=HelpDesk_Chetverikov;Trusted_Connection=True;TrustServerCertificate=True;";
 
-        public string GetConnectionString()
+        public static SqlConnection GetConnection()
         {
-            return ConnectionString;
+            return new SqlConnection(ConnectionString);
         }
     }
 }
