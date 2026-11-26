@@ -23,7 +23,7 @@
             <TextBox x:Name="LoginTextBox" Style="{StaticResource InputBox}" Height="38"/>
 
             <TextBlock Text="Пароль" Style="{StaticResource FieldLabel}" Margin="0,16,0,6"/>
-            <PasswordBox x:Name="PasswordBox" Style="{StaticResource InputPassword}" Height="38"/>
+            <PasswordBox x:Name="PasswordInput" Style="{StaticResource InputPassword}" Height="38"/>
 
             <TextBlock x:Name="ErrorText" Foreground="#C0392B" FontSize="12"
                        Margin="0,10,0,0" Visibility="Collapsed"/>

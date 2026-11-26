@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using HelpDesk.Data;
+using HelpDesk.Helpers;
 using HelpDesk.Models;
 
 namespace HelpDesk.Views
@@ -18,10 +19,11 @@ namespace HelpDesk.Views
         {
             InitializeComponent();
 
-            CurrentUserTextBlock.Text = "Пользователь: admin";
-
             LoadStatuses();
             SafeLoadTickets();
+
+            ShowCurrentUser();
+            ApplyRolePermissions();
         }
 
         /// <summary>
@@ -157,6 +159,54 @@ namespace HelpDesk.Views
             StatusComboBox.SelectedIndex = 0;
         }
 
+        /// <summary>
+        /// Показывает ФИО и роль текущего пользователя в верхней панели.
+        /// </summary>
+        private void ShowCurrentUser()
+        {
+            if (UserSession.CurrentUser == null)
+            {
+                CurrentUserTextBlock.Text = "Пользователь: не определён";
+                return;
+            }
+
+            CurrentUserTextBlock.Text =
+                "Пользователь: " +
+                UserSession.CurrentUser.FullName +
+                " (" + UserSession.CurrentUser.RoleName + ")";
+
+            Title = "HelpDesk — Главное окно (" + UserSession.CurrentUser.RoleName + ")";
+        }
+
+        /// <summary>
+        /// Учебное правило доступа:
+        /// удаление — только администратор;
+        /// редактирование — администратор и специалист.
+        /// </summary>
+        private void ApplyRolePermissions()
+        {
+            if (UserSession.CurrentUser == null)
+            {
+                DeleteTicketButton.IsEnabled = false;
+                EditTicketButton.IsEnabled = false;
+                return;
+            }
+
+            string role = UserSession.CurrentUser.RoleName;
+            bool isAdmin = role == "Администратор";
+            bool isSpecialist = role == "Специалист";
+
+            DeleteTicketButton.IsEnabled = isAdmin;
+            DeleteTicketButton.ToolTip = isAdmin
+                ? "Удалить выбранную заявку"
+                : "Удаление доступно только администратору";
+
+            EditTicketButton.IsEnabled = isAdmin || isSpecialist;
+            EditTicketButton.ToolTip = isAdmin || isSpecialist
+                ? "Редактировать выбранную заявку"
+                : "Редактирование доступно администратору и специалисту";
+        }
+
         private void ApplyFilter()
         {
             IEnumerable<Ticket> result = _tickets;
@@ -277,6 +327,8 @@ namespace HelpDesk.Views
 
             if (result == MessageBoxResult.Yes)
             {
+                UserSession.End();
+
                 var loginWindow = new LoginWindow();
                 loginWindow.Show();
                 Close();

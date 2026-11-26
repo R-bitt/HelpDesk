@@ -1,31 +1,17 @@
+using System.Data.SqlClient;
 using System.Windows;
+using HelpDesk.Helpers;
+using HelpDesk.Models;
 using HelpDesk.Services;
 
 namespace HelpDesk.Views
 {
     public partial class LoginWindow : Window
     {
-        private readonly bool _demoError;
-
-        public LoginWindow() : this(false)
-        {
-        }
-
-        public LoginWindow(bool demoError)
+        public LoginWindow()
         {
             InitializeComponent();
-            _demoError = demoError;
-            if (demoError)
-            {
-                Loaded += ShowDemoError;
-            }
-        }
-
-        private void ShowDemoError(object sender, RoutedEventArgs e)
-        {
-            LoginTextBox.Text = "admin";
-            PasswordBox.Password = "11111";
-            LoginButton_Click(LoginButton, new RoutedEventArgs());
+            Loaded += (sender, e) => LoginTextBox.Focus();
         }
 
         private void LoginButton_Click(object sender, RoutedEventArgs e)
@@ -33,34 +19,49 @@ namespace HelpDesk.Views
             ErrorText.Visibility = Visibility.Collapsed;
 
             string login = LoginTextBox.Text.Trim();
-            string password = PasswordBox.Password;
+            string password = PasswordInput.Password;
 
-            if (login.Length == 0)
+            if (string.IsNullOrWhiteSpace(login))
             {
                 ShowError("Введите логин");
                 LoginTextBox.Focus();
                 return;
             }
 
-            if (password.Length == 0)
+            if (string.IsNullOrEmpty(password))
             {
                 ShowError("Введите пароль");
-                PasswordBox.Focus();
+                PasswordInput.Focus();
                 return;
             }
 
-            var authService = new AuthService();
-            if (!authService.Authenticate(login, password))
+            try
             {
-                ShowError("Неверный логин или пароль");
-                PasswordBox.Clear();
-                PasswordBox.Focus();
-                return;
-            }
+                var authService = new AuthService();
+                User? user = authService.Authenticate(login, password);
 
-            var mainWindow = new MainWindow();
-            mainWindow.Show();
-            Close();
+                if (user == null)
+                {
+                    ShowError("Неверный логин или пароль, либо учётная запись отключена");
+                    PasswordInput.Clear();
+                    PasswordInput.Focus();
+                    return;
+                }
+
+                UserSession.Start(user);
+
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
+                Close();
+            }
+            catch (SqlException ex)
+            {
+                MessageBox.Show(
+                    "Не удалось обратиться к базе данных:\n" + ex.Message,
+                    "Ошибка SQL Server",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         private void ShowError(string message)
